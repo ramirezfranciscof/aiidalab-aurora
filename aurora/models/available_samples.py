@@ -102,16 +102,21 @@ class AvailableSamplesModel():
     def parse_sample_datadict(self, basedict, datadict):
         """Parses stuff."""
 
-        # These units are all wanky...
-        # Both cathode and anode should be around 30 miligrams
-        weight_ag = float(datadict['Anode Weight'])
-        weight_cg = float(datadict['Cathode Weight (mg)']) / (1000 * 1000)
-        rate_amahg = float(datadict['Anode Practical Capacity (mAh/g)'])
-        rate_cmahg = float(datadict['Cathode Practical Capacity (mAh/g)'])
-        capacity_a = weight_ag * rate_amahg
-        capacity_c = weight_cg * rate_cmahg
-        capacity = min(capacity_a, capacity_c)
-        capacity = float(int(capacity*10))/10
+        weight_total_mg = float(datadict['Anode Weight'])
+        weight_base0_mg = float(datadict['Anode Current Collector Weight (mg)'])
+        practical_capacity = float(datadict['Anode Practical Capacity (mAh/g)'])
+        capacity_anode = (weight_total_mg - weight_base0_mg) * practical_capacity / 1000
+
+        weight_total_mg = float(datadict['Cathode Weight (mg)'])
+        weight_base0_mg = float(datadict['Cathode Current Collector Weight (mg)'])
+        practical_capacity = float(datadict['Cathode Practical Capacity (mAh/g)'])
+        capacity_cathode = (weight_total_mg - weight_base0_mg) * practical_capacity / 1000
+
+        capacity_mah = min(capacity_anode, capacity_cathode)
+        def round_to_3sf(x):
+            from math import log10, floor
+            return round(x, 2-int(floor(log10(abs(x)))))
+        capacity_mah = round_to_3sf(capacity_mah)
 
         metadata_name = basedict['basename'] + '-' + datadict['Battery_Number']
 
@@ -119,7 +124,7 @@ class AvailableSamplesModel():
             "manufacturer": basedict['manufacturer'],
             "composition": {"description": basedict['description']},
             "form_factor": datadict['Casing Type'],
-            "capacity": {"nominal": capacity, "actual": None, "units": "mAh"},
+            "capacity": {"nominal": capacity_mah, "actual": None, "units": "mAh"},
             "battery_id": basedict['battery_id'],
             "metadata": {
                 "name": metadata_name,
