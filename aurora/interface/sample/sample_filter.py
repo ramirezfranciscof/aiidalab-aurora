@@ -67,7 +67,7 @@ class SampleFilterWidget(ipw.VBox):
 
         self.w_button_save = ipw.Button(
             description="Save changes",
-            button_style='success', tooltip="Save changes", icon="fa-trash",
+            button_style='success', tooltip="Save changes", icon="fa-floppy-o",
             style=self.BUTTON_STYLE, layout=self.BUTTON_LAYOUT, disabled=True,
         )
 
