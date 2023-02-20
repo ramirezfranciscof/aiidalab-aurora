@@ -30,6 +30,18 @@ class OutputExplorerComponent(ipw.VBox):
             style=self.BUTTON_STYLE, layout=self.BUTTON_LAYOUT)
         self.w_joblist = ipw.Output(layout=self.OUTPUT_LAYOUT)
 
+        self.w_process_selection = ipw.Select(
+            layout={'width': '60%', 'height': '300px'},
+        )
+        self.w_process_info = ipw.Output(layout={
+            'height': '300px',
+            'width': '40%',
+            'overflow': 'scroll',
+            'border': 'solid 1px',
+            'margin': '5px',
+            'padding': '5px'
+        })
+
         self.w_select_sample_id = ipw.Dropdown(
             description="Select Battery ID:", value=None,
             layout=self.BOX_LAYOUT_1, style={'description_width': 'initial'})
@@ -39,6 +51,7 @@ class OutputExplorerComponent(ipw.VBox):
             self.w_joblist_header,
             ipw.HBox([self.w_job_days, self.w_update]),
             self.w_joblist,
+            ipw.HBox([self.w_process_selection, self.w_process_info]),
             self.w_select_sample_id,
         ]
         
@@ -61,7 +74,8 @@ class OutputExplorerComponent(ipw.VBox):
             'attributes.process_label': 'job type',
             'attributes.state': 'state',
             'attributes.status': 'reason',
-            'extras.monitored': 'monitored'
+            'extras.monitored': 'monitored',
+            'attributes.metadata.name': 'sample name'
         }, inplace=True)
         self.job_list['monitored'] = self.job_list['monitored'].astype(bool)
 
@@ -82,6 +96,18 @@ class OutputExplorerComponent(ipw.VBox):
         with self.w_joblist:
             display(self.job_list.style.hide_index())
         self._update_sample_id_options()
+
+        process_list = [("", None)]
+        for index, row in self.job_list.iterrows():
+            pk = int(row['ID'])
+            jobtype = row['job type']
+            timestamp = row['creation time']
+            samplename = row['sample name']
+            col1 = f"[ {timestamp} ]"
+            col2 = f"{jobtype} <{str(pk)}>"
+            process_data = (f"{timestamp}   |   {col2:<40}   |   {samplename}", pk)
+            process_list.append(process_data)
+        self.w_process_selection.options = process_list
 
     @property
     def selected_job_id(self):

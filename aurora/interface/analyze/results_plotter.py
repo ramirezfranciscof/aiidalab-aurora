@@ -17,16 +17,20 @@ class ResultsPlotterComponent(ipw.VBox):
     BUTTON_LAYOUT = {'margin': '5px'}
     PLOT_TYPES = [('', ''), ('Voltage & current vs time', 'voltagecurrent_time'), ('Voltage vs time', 'voltage_time'), ('Current vs time', 'current_time'), ('Capacity vs cycle', 'capacity_cycle')]
 
-    def __init__(self):
+    def __init__(self, plotmaker_model=None):
         """Description pending"""
         self.CURRENT_JOBID = None
 
+        if plotmaker_model is None:
+            raise ValueError('An plot maker model must be provided.')
+        self.plotmaker_model = plotmaker_model
+
         # initialize widgets
         self.w_results_header = ipw.HTML(value="<h2>Plot Results</h2>")
-        self.w_choose_batteryid = ipw.Text(
-            description='Battery ID:',
-            placeholder='ID number`',
-            layout={'width': '20%'},
+        self.w_choose_process = ipw.Text(
+            description='Experiment PK:',
+            placeholder='PK',
+            layout={'width': '30%'},
         )
         self.w_plot_type = ipw.Dropdown(
             description="Select plot type:", value=None,
@@ -35,7 +39,7 @@ class ResultsPlotterComponent(ipw.VBox):
         self.w_plot_draw = ipw.Button(
             description="Draw plot",
             button_style='info', tooltip="Draw plot", icon='line-chart',
-            disabled=True,
+            disabled=False,
             style=self.BUTTON_STYLE, layout=self.BUTTON_LAYOUT)
         self.w_log_output = ipw.Output()
         self.w_plot_output = ipw.Output(layout={'height': '500px', 'width': '90%', 'overflow': 'scroll', 'border': 'solid 2px', 'margin': '5px', 'padding': '5px'})
@@ -43,7 +47,7 @@ class ResultsPlotterComponent(ipw.VBox):
         super().__init__()
         self.children = [
             self.w_results_header,
-            ipw.HBox([self.w_choose_batteryid, self.w_plot_type, self.w_plot_draw]),
+            ipw.HBox([self.w_choose_process, self.w_plot_type, self.w_plot_draw]),
             self.w_log_output,
             self.w_plot_output
         ]
@@ -55,6 +59,15 @@ class ResultsPlotterComponent(ipw.VBox):
     @property
     def selected_plot_type(self):
         return self.w_plot_type.value
+
+    @property
+    def selected_process_pk(self):
+        if self.w_choose_process.value == '':
+            return None
+        try:
+            return int(self.w_choose_process.value)
+        except ValueError:
+            raise ValueError('PK must be a number!')
 
     def _cycling_analysis(self):
         return cycling_analysis(self.output_explorer.selected_job_id)
@@ -74,8 +87,47 @@ class ResultsPlotterComponent(ipw.VBox):
         self.w_plot_type.value = None
         self.w_plot_output.clear_output()
 
-    def draw_plot(self, dummy=None):       
+    def draw_plot(self, dummy=None):
+        #--- temp for testing
+        #self.w_choose_process.value = '192'
+        #self.w_plot_type.value = 'voltagecurrent_time'
+        #self.w_plot_type.value = 'voltage_time'
+        #self.w_plot_type.value = 'current_time'
+        #self.w_plot_type.value = 'capacity_cycle'
+        #--- temp for testing
+
+        if self.selected_process_pk is None:
+            raise ValueError('Select job id!')
+            return
+
+        if self.selected_plot_type is None:
+            raise ValueError('Select plot type!')
+            return
+
+        chosen_data = cycling_analysis(self.selected_process_pk)
+        self.w_plot_output.clear_output()
+        with self.w_plot_output:
+            # NOTE: this is a very rudimental way of creating plots
+            # --> check the internet for the best way to work with matplotlib plots in ipywidgets
+            # e.g. https://swdevnotes.com/python/2021/interactive-charts-with-ipywidgets-matplotlib/
+            # CURRENT BUG: once created, plots cannot be deleted
+            # I think we need to implement a way to update a figure/axes
+            if not chosen_data:
+                print("ERROR: No data loaded!")
+            elif self.selected_plot_type == 'voltagecurrent_time':
+                aiida_aurora.utils.plot.plot_Ewe_I(chosen_data)
+            elif self.selected_plot_type == 'voltage_time':
+                aiida_aurora.utils.plot.plot_Ewe(chosen_data)
+            elif self.selected_plot_type == 'current_time':
+                aiida_aurora.utils.plot.plot_I(chosen_data)
+            elif self.selected_plot_type == 'capacity_cycle':
+                aiida_aurora.utils.plot.plot_Qd(chosen_data)
+
+        #matplotlib_plot = self.plotmaker_model.make_plot(self.selected_process_pk)
+        return
+
         title = None
+        self.w_plot_output.clear_output()
         if self.selected_job_id and self.selected_plot_type:
             self.w_plot_output.clear_output()
             with self.w_plot_output:
